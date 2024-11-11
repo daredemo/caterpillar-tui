@@ -1,8 +1,7 @@
 const std = @import("std");
 
-const libdef = @import("definitions.zig");
+const CStuff = @import("tui").CStuff;
 
-// const Term = @import("ansi_terminal.zig");
 const Term = @import("tui").Term;
 
 const Border = @import("tui").Border.Border;
@@ -40,16 +39,16 @@ pub fn main() !void {
     var score: *u32 = undefined;
     defer _ = std.io.getStdOut().writer().print("Your score: {}\n", .{score.*}) catch unreachable;
     defer _ = buf_writer.flush() catch unreachable;
-    libdef.handleSigwinch(0);
-    libdef.setSignal();
+    CStuff.handleSigwinch(0);
+    CStuff.setSignal();
     _ = Term.saveTerminalState(&buf_writer);
     defer {
         _ = Term.restoreTerminalState(&buf_writer);
     }
-    const old_terminal = libdef.saveTerminalSettings();
-    var new_terminal = libdef.saveTerminalSettings();
-    defer libdef.restoreTerminalSettings(old_terminal);
-    libdef.disableEchoAndCanonicalMode(&new_terminal);
+    const old_terminal = CStuff.saveTerminalSettings();
+    var new_terminal = CStuff.saveTerminalSettings();
+    defer CStuff.restoreTerminalSettings(old_terminal);
+    CStuff.disableEchoAndCanonicalMode(&new_terminal);
     Term.disableCursor(&buf_writer);
     defer Term.enableCursor(&buf_writer);
     defer Term.setColorB(
@@ -72,8 +71,8 @@ pub fn main() !void {
     // PANEL: ROOT
     const panel_root = Panel.initRoot(
         "FULL",
-        &libdef.win_width,
-        &libdef.win_height,
+        &CStuff.win_width,
+        &CStuff.win_height,
         Layout.Horizontal,
         &allocator,
         &buf_writer,
@@ -274,8 +273,8 @@ const TheApp = struct {
                 the_allocator.*,
             ),
         };
-        app.app_width = libdef.win_width;
-        app.app_height = libdef.win_height;
+        app.app_width = CStuff.win_width;
+        app.app_height = CStuff.win_height;
         return app;
     }
 
@@ -534,15 +533,15 @@ const TheApp = struct {
                 _ = self.writer.flush() catch unreachable;
             }
             if (counter == 0) {
-                self.app_width = libdef.win_width;
-                self.app_height = libdef.win_height;
+                self.app_width = CStuff.win_width;
+                self.app_height = CStuff.win_height;
                 _ = self.panel_root.draw();
             } else if ( //
-            (self.app_width != libdef.win_width) or //
-                (self.app_height != libdef.win_height))
+            (self.app_width != CStuff.win_width) or //
+                (self.app_height != CStuff.win_height))
             {
-                self.app_width = libdef.win_width;
-                self.app_height = libdef.win_height;
+                self.app_width = CStuff.win_width;
+                self.app_height = CStuff.win_height;
                 _ = self.panel_root.draw();
             }
             _ = self.writer.flush() catch unreachable;
