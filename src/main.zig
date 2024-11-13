@@ -34,10 +34,78 @@ const rand = std.crypto.random;
 const HEIGHT: i32 = 15;
 const WIDTH: i32 = 30;
 
+const usage =
+    \\Usage: ./caterpillar-tui [options]
+    \\A game where a very hungy caterpillar eats to grow
+    \\
+    \\Options:
+    \\  -s, --speed D       Set speed of the game to D (default: 50)
+    \\  -u, --user USER     Set user name to USER (default: User)
+    \\  -h, --help          Show this help and exit
+    \\
+;
+
 pub fn main() !void {
+    // Memory allocations definitions
+    var gpa = std.heap.GeneralPurposeAllocator(.{}){};
+    defer _ = gpa.deinit();
+    var allocator = gpa.allocator();
+    // Command line parameters
+    const args = try std.process.argsAlloc(allocator);
+    var opt_speed: ?u8 = null;
+    var opt_user: ?[]const u8 = null;
+    //
+    {
+        var i: usize = 1;
+        while (i < args.len) : (i += 1) {
+            const arg = args[i];
+            if (std.mem.eql(u8, "-h", arg) or //
+                std.mem.eql(u8, "--help", arg))
+            {
+                try std.io.getStdOut().writeAll(usage);
+                return std.process.cleanExit();
+            } else if (std.mem.eql(u8, "-u", arg) or //
+                std.mem.eql(u8, "--user", arg))
+            {
+                i += 1;
+                if (i >= args.len) std.zig.fatal(
+                    "Expected user name after '{s}'.",
+                    .{arg},
+                );
+                if (opt_user != null) std.zig.fatal(
+                    "Duplicate argument {s}.",
+                    .{arg},
+                );
+                opt_user = args[i];
+                if (opt_user.?.len == 0) opt_user = null;
+            } else if (std.mem.eql(u8, "-s", arg) or //
+                std.mem.eql(u8, "--speed", arg))
+            {
+                i += 1;
+                if (i >= args.len) std.zig.fatal(
+                    "Expected integer (0 < D < 256) after '{s}'.",
+                    .{arg},
+                );
+                if (opt_speed != null) std.zig.fatal(
+                    "Duplicate argument {s}.",
+                    .{arg},
+                );
+                opt_speed = try std.fmt.parseInt(u8, args[i], 10);
+                if (opt_speed == 0) std.zig.fatal(
+                    "Speed must be greater than 0.",
+                    .{},
+                );
+            }
+        }
+    }
+    const the_user = opt_user orelse "User";
+    const the_speed: u8 = opt_speed orelse 55;
     var buf_writer = BuffWriter{};
     var score: *u32 = undefined;
-    defer _ = std.io.getStdOut().writer().print("Your score: {}\n", .{score.*}) catch unreachable;
+    defer _ = std.io.getStdOut().writer().print(
+        "{s}, at speed of {d} your score is: {}\n",
+        .{ the_user, the_speed, score.* },
+    ) catch unreachable;
     defer _ = buf_writer.flush() catch unreachable;
     CStuff.handleSigwinch(0);
     CStuff.setSignal();
@@ -65,9 +133,9 @@ pub fn main() !void {
     );
     Term.clearScreen(&buf_writer);
     _ = buf_writer.flush() catch unreachable;
-    var gpa = std.heap.GeneralPurposeAllocator(.{}){};
-    defer _ = gpa.deinit();
-    var allocator = gpa.allocator();
+    // var gpa = std.heap.GeneralPurposeAllocator(.{}){};
+    // defer _ = gpa.deinit();
+    // var allocator = gpa.allocator();
     // PANEL: ROOT
     const panel_root = Panel.initRoot(
         "FULL",
@@ -211,6 +279,7 @@ pub fn main() !void {
     // THE APP
     var the_app = TheApp.init(
         panel_root,
+        the_speed,
         &allocator,
         &buf_writer,
     );
@@ -249,6 +318,8 @@ const TheApp = struct {
     larva: std.ArrayList(Location) = undefined,
     writer: *BuffWriter = undefined,
     panel_root: *Panel = undefined,
+    // app_user: []u8 = undefined,
+    app_speed: u8 = undefined,
     // reader: ChRead.CharReader = undefined,
     // panel_void_l: *Panel = undefined,
     // panel_void_r: *Panel = undefined,
@@ -256,6 +327,8 @@ const TheApp = struct {
 
     pub fn init(
         panel_root: *Panel,
+        // user: []u8,
+        speed: u8,
         the_allocator: *std.mem.Allocator,
         writer: *BuffWriter,
     ) TheApp {
@@ -264,6 +337,8 @@ const TheApp = struct {
             .app_running = true,
             .app_heart = true,
             .app_allocator = the_allocator,
+            // .app_user = user,
+            .app_speed = speed,
             .panel_root = panel_root,
             .jaw = Face{},
             .jaw_new = Face{},
@@ -480,7 +555,7 @@ const TheApp = struct {
                 if (!self.app_running) break;
             }
             _ = self.panel_root.update();
-            _ = std.time.sleep(std.time.ns_per_s / 55);
+            _ = std.time.sleep(std.time.ns_per_s / @as(u64, self.app_speed));
             defer counter = (counter + 1) % 10;
             if (counter == 0) {
                 self.app_heart = !self.app_heart;
