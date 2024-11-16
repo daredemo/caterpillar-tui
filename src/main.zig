@@ -325,14 +325,16 @@ const TheApp = struct {
     // panel_void_r: *Panel = undefined,
     // panel_main: *Panel = undefined,
 
+    const Self = @This();
+
     pub fn init(
         panel_root: *Panel,
         // user: []u8,
         speed: u8,
         the_allocator: *std.mem.Allocator,
         writer: *BuffWriter,
-    ) TheApp {
-        var app = TheApp{
+    ) Self {
+        var app = Self{
             .writer = writer,
             .app_running = true,
             .app_heart = true,
@@ -353,7 +355,7 @@ const TheApp = struct {
         return app;
     }
 
-    pub fn deinit(self: *TheApp) !void {
+    pub fn deinit(self: *Self) !void {
         //     // _ = self;
         //     // _ = try self.app_allocator.destroy(panel);
         //     _ = self.app_allocator.destroy(self.panel_void_r);
@@ -362,7 +364,7 @@ const TheApp = struct {
         _ = self.app_allocator.destroy(&self.larva);
     }
 
-    pub fn getInputs(self: *TheApp) !void {
+    pub fn getInputs(self: *Self) !void {
         var has_esc = false;
         var has_special = false;
         var poller = std.io.poll(
@@ -452,7 +454,7 @@ const TheApp = struct {
         }
     }
 
-    pub fn getHeartBeat(self: *TheApp) !void {
+    pub fn getHeartBeat(self: *Self) !void {
         var counter: u8 = 0;
         var buf: [6]u8 = [1]u8{0} ** 6;
         _ = self.larva.append(Location{
@@ -623,7 +625,7 @@ const TheApp = struct {
         }
     }
 
-    pub fn randomFood(self: *TheApp) Location {
+    pub fn randomFood(self: *Self) Location {
         var f = Location{};
         while (true) {
             const x = rand.uintLessThan(u8, WIDTH);
