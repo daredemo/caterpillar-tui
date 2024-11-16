@@ -99,7 +99,7 @@ pub fn main() !void {
         }
     }
     const the_user = opt_user orelse "User";
-    const the_speed: u8 = opt_speed orelse 55;
+    const the_speed: u8 = opt_speed orelse 50;
     var buf_writer = BuffWriter{};
     var score: *u32 = undefined;
     defer _ = std.io.getStdOut().writer().print(
