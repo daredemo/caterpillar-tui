@@ -156,6 +156,7 @@ pub fn main() !void {
     );
     defer _ = allocator.destroy(panel_main);
     defer _ = panel_main.deinit(&allocator);
+    _ = panel_main.setSizeOptionalFixed(HEIGHT + 6 + 3 + 2);
     const panel_game = Panel.init(
         null,
         panel_main,
