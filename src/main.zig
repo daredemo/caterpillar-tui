@@ -138,7 +138,7 @@ pub fn main() !void {
     // var allocator = gpa.allocator();
     // PANEL: ROOT
     const panel_root = Panel.initRoot(
-        "FULL",
+        null,
         &CStuff.win_width,
         &CStuff.win_height,
         Layout.Horizontal,
@@ -228,7 +228,7 @@ pub fn main() !void {
     ).setMinHeight(3);
     // PANEL: VOID LEFT OF MAIN
     const panel_void_l = Panel.init(
-        "VOID L",
+        null,
         panel_root,
         Layout.Vertical,
         &allocator,
@@ -237,7 +237,7 @@ pub fn main() !void {
     defer panel_void_l.deinit(&allocator);
     // PANEL: VOID RIGHT OF MAIN
     const panel_void_r = Panel.init(
-        "VOID R",
+        null,
         panel_root,
         Layout.Vertical,
         &allocator,
@@ -258,8 +258,9 @@ pub fn main() !void {
     );
     _ = panel_main.appendChild(
         panel_info,
+        // null,
+        4,
         null,
-        1.0,
     );
     _ = panel_root.appendChild(
         panel_void_l,
