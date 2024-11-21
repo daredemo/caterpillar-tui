@@ -1,9 +1,8 @@
+// Import standard library of `zig`
 const std = @import("std");
-
+// Import simple text ui for zig (tui)
 const CStuff = @import("tui").CStuff;
-
 const Term = @import("tui").Term;
-
 const Border = @import("tui").Border.Border;
 const BorderStyle = @import("tui").Border.BorderStyle;
 const Panel = @import("tui").Panel.Panel;
@@ -13,7 +12,6 @@ const RenderArray = @import("tui").Panel.RenderTextArray;
 const Location = @import("tui").Location.Location;
 const Face = @import("tui").Location.Face;
 const FaceE = @import("tui").Location.FaceE;
-
 const TextLine = @import("tui").TextLine.TextLine;
 const RGB = @import("tui").Color.RGB;
 const ColorStyle = @import("tui").Color.ColorStyle;
@@ -24,16 +22,21 @@ const ColorBU = @import("tui").Color.ColorBU;
 const ColorFU = @import("tui").Color.ColorFU;
 const TitlePosition = @import("tui").Panel.PositionTB;
 const StrAU = @import("tui").StringStuff.Alignment;
-
 const BuffWriter = @import(
     "tui",
 ).BuffWriter.SimpleBufferedWriter;
-
+// Random number generator
 const rand = std.crypto.random;
 
+// Height of the caterpillar game area in blocks*
+// NOTE: Height of a block is equal to ONE character
 const HEIGHT: i32 = 15;
+// Width of the caterpillar game area in blocks*
+// NOTE: Width of a block is equal to TWO characters
+// Thus total width in characters is 2 * WIDTH
 const WIDTH: i32 = 30;
 
+// Help message
 const usage =
     \\Usage: ./caterpillar-tui [options]
     \\A game where a very hungy caterpillar eats to grow
@@ -98,31 +101,41 @@ pub fn main() !void {
             }
         }
     }
+    // Username and game speed
     const the_user = opt_user orelse "User";
     const the_speed: u8 = opt_speed orelse 50;
+    // Buffer stdout
     var buf_writer = BuffWriter{};
+    // Game score
     var score: *u32 = undefined;
+    // Print username, speed and score on exit
     defer _ = std.io.getStdOut().writer().print(
         "{s}, at speed of {d} your score is: {}\n",
         .{ the_user, the_speed, score.* },
     ) catch unreachable;
     defer _ = buf_writer.flush() catch unreachable;
+    // Handle SIGWINCH (window size change signal)
     CStuff.handleSigwinch(0);
     CStuff.setSignal();
+    // Save terminal state before opening alternative
     _ = Term.saveTerminalState(&buf_writer);
     defer {
         _ = Term.restoreTerminalState(&buf_writer);
     }
+    // Get terminal settings (to restore and to edit)
     const old_terminal = CStuff.saveTerminalSettings();
     var new_terminal = CStuff.saveTerminalSettings();
     defer CStuff.restoreTerminalSettings(old_terminal);
+    // Continuously read input, disable echo of input
     CStuff.disableEchoAndCanonicalMode(&new_terminal);
+    // Disable cursor
     Term.disableCursor(&buf_writer);
     defer Term.enableCursor(&buf_writer);
     defer Term.setColorB(
         &buf_writer,
         ColorB.initName(ColorBU.Reset),
     );
+    // Reset colors and styles when exiting the game
     defer Term.setColorStyle(
         &buf_writer,
         ColorStyle{
@@ -131,11 +144,9 @@ pub fn main() !void {
             .modes = ColorModes{ .Reset = true },
         },
     );
+    // Clear screen
     Term.clearScreen(&buf_writer);
     _ = buf_writer.flush() catch unreachable;
-    // var gpa = std.heap.GeneralPurposeAllocator(.{}){};
-    // defer _ = gpa.deinit();
-    // var allocator = gpa.allocator();
     // PANEL: ROOT
     const panel_root = Panel.initRoot(
         null,
@@ -306,6 +317,7 @@ pub fn main() !void {
     _ = buf_writer.flush() catch unreachable;
 }
 
+// The core of the game: logics, etc
 const TheApp = struct {
     app_mutex: std.Thread.Mutex = .{},
     app_running: bool = true,
@@ -320,18 +332,12 @@ const TheApp = struct {
     larva: std.ArrayList(Location) = undefined,
     writer: *BuffWriter = undefined,
     panel_root: *Panel = undefined,
-    // app_user: []u8 = undefined,
     app_speed: u8 = undefined,
-    // reader: ChRead.CharReader = undefined,
-    // panel_void_l: *Panel = undefined,
-    // panel_void_r: *Panel = undefined,
-    // panel_main: *Panel = undefined,
 
     const Self = @This();
 
     pub fn init(
         panel_root: *Panel,
-        // user: []u8,
         speed: u8,
         the_allocator: *std.mem.Allocator,
         writer: *BuffWriter,
@@ -341,7 +347,6 @@ const TheApp = struct {
             .app_running = true,
             .app_heart = true,
             .app_allocator = the_allocator,
-            // .app_user = user,
             .app_speed = speed,
             .panel_root = panel_root,
             .jaw = Face{},
@@ -358,17 +363,16 @@ const TheApp = struct {
     }
 
     pub fn deinit(self: *Self) !void {
-        //     // _ = self;
-        //     // _ = try self.app_allocator.destroy(panel);
-        //     _ = self.app_allocator.destroy(self.panel_void_r);
-        //     _ = self.app_allocator.destroy(self.panel_main);
-        //     _ = self.app_allocator.destroy(self.panel_void_l);
-        _ = self.app_allocator.destroy(&self.larva);
+        _ = self.app_allocator.destroy(
+            &self.larva,
+        );
     }
 
+    // Read user inputs
     pub fn getInputs(self: *Self) !void {
         var has_esc = false;
         var has_special = false;
+        // Poll the stdin to avoid that the thread gets stuck
         var poller = std.io.poll(
             self.app_allocator.*,
             enum { stdin },
@@ -377,6 +381,7 @@ const TheApp = struct {
             },
         );
         defer poller.deinit();
+        // The timeout for the polling
         const timeout = std.time.ns_per_s / 1000;
         var buf: [1024]u8 = [1]u8{0} ** 1024;
 
@@ -398,7 +403,7 @@ const TheApp = struct {
                 for (0..n) |index| {
                     const c = buf[index];
                     switch (c) {
-                        'p' => { // TODO: PAUSE
+                        'p', 'P' => { // TODO: PAUSE
                             has_esc = false;
                             has_special = false;
                         },
@@ -456,6 +461,7 @@ const TheApp = struct {
         }
     }
 
+    // Game logics, handling screen redraw, etc
     pub fn getHeartBeat(self: *Self) !void {
         var counter: u8 = 0;
         var buf: [6]u8 = [1]u8{0} ** 6;
@@ -500,26 +506,38 @@ const TheApp = struct {
             87,
         );
         var larva_head = self.larva.items[0];
-        const larva_rel = locToRel(larva_head);
-        var food_rel = locToRel(Location{
-            .x = self.food.x,
-            .y = self.food.y,
-        });
+        const larva_rel = locToRel(
+            larva_head,
+        );
+        var food_rel = locToRel(
+            Location{
+                .x = self.food.x,
+                .y = self.food.y,
+            },
+        );
         _ = tl_score.relativeXY(2, 1);
         _ = tl_info.relativeXY(1, 1);
         _ = tl_food.bg(
-            ColorB.initRGB(color_food_b),
+            ColorB.initRGB(
+                color_food_b,
+            ),
         ).relativeXY(
             food_rel.x,
             food_rel.y,
         );
         _ = tl_head.bg(
-            ColorB.initRGB(color_head_b),
+            ColorB.initRGB(
+                color_head_b,
+            ),
         ).relativeXY(
             larva_rel.x,
             larva_rel.y,
         );
-        _ = tl_body.bg(ColorB.initRGB(color_body_b));
+        _ = tl_body.bg(
+            ColorB.initRGB(
+                color_body_b,
+            ),
+        );
         const panel_void_l = self.panel_root.child_head.?;
         const panel_main = panel_void_l.sibling_next.?;
         const panel_game = panel_main.child_head.?;
@@ -550,16 +568,21 @@ const TheApp = struct {
         _ = panel_game.appendText(&rt_food);
         _ = panel_game.appendArray(&ra_body);
         _ = panel_info.appendText(&rt_info);
+        // Draw the game state
         _ = self.panel_root.draw();
         _ = self.writer.flush() catch unreachable;
+        // Game loop until user exits or game is over
         while (true) {
             {
                 self.app_mutex.lock();
                 defer self.app_mutex.unlock();
                 if (!self.app_running) break;
             }
-            _ = self.panel_root.update();
-            _ = std.time.sleep(std.time.ns_per_s / @as(u64, self.app_speed));
+            // Update visuals...
+            // _ = self.panel_root.update();
+            // ... then wait and update the game state
+            _ = std.time.sleep( //
+                std.time.ns_per_s / @as(u64, self.app_speed));
             defer counter = (counter + 1) % 10;
             if (counter == 0) {
                 self.app_heart = !self.app_heart;
@@ -569,7 +592,9 @@ const TheApp = struct {
                     self.jaw.face = self.jaw_new.face;
                 }
                 larva_head = self.larva.items[0];
-                const larva_move = larva_head.moveTo(self.jaw.face);
+                const larva_move = larva_head.moveTo(
+                    self.jaw.face,
+                );
                 if (larva_move.inBounds(WIDTH, HEIGHT)) {
                     for (self.larva.items, 1..) |item, index| {
                         if (item.equal(larva_move)) {
@@ -579,10 +604,14 @@ const TheApp = struct {
                             }
                         }
                     }
+                    // New larva head after move
+                    // insert to the beginning
                     self.larva.insert(
                         0,
                         larva_move,
                     ) catch unreachable;
+                    // If (new) head "eats" the good:
+                    // increment the score, generate new food
                     if (larva_move.equal(self.food)) {
                         self.score += 1;
                         const str_score = std.fmt.bufPrint(
@@ -598,6 +627,8 @@ const TheApp = struct {
                             food_rel.y,
                         );
                     } else {
+                        // Remove old tail of the larva
+                        // only if larva moved and did not eat food
                         _ = self.larva.pop();
                     }
                 } else {
@@ -616,8 +647,8 @@ const TheApp = struct {
                 self.app_height = CStuff.win_height;
                 _ = self.panel_root.draw();
             } else if ( //
-            (self.app_width != CStuff.win_width) or //
-                (self.app_height != CStuff.win_height))
+            self.app_width != CStuff.win_width or //
+                self.app_height != CStuff.win_height)
             {
                 self.app_width = CStuff.win_width;
                 self.app_height = CStuff.win_height;
@@ -627,6 +658,7 @@ const TheApp = struct {
         }
     }
 
+    // Generate (new) food item at random location
     pub fn randomFood(self: *Self) Location {
         var f = Location{};
         while (true) {
