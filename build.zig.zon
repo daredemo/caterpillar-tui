@@ -24,8 +24,8 @@
     // internet connectivity.
     .dependencies = .{
         .@"simple-text-ui-for-zig" = .{
-            .url = "git+https://github.com/daredemo/simple-text-ui-for-zig.git?ref=HEAD#15e79a73afd84bd544b4bdd268ecbc6f92edc538",
-            .hash = "1220a7aca117f249ae046880d16787c21bf72f6c56a62c4d239d89ec9691decce440",
+            .url = "git+https://github.com/daredemo/simple-text-ui-for-zig.git?ref=HEAD#2f84d6350c41e524ad2a5ab03034b5a971a8eade",
+            .hash = "122016df01db810f5568229141efb24edacfe1dec2020c8ed488c246ae0d877ec773",
         },
     },
     .paths = .{

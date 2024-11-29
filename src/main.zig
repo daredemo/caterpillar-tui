@@ -22,9 +22,9 @@ const ColorBU = @import("tui").Color.ColorBU;
 const ColorFU = @import("tui").Color.ColorFU;
 const TitlePosition = @import("tui").Panel.PositionTB;
 const StrAU = @import("tui").StringStuff.Alignment;
-const BuffWriter = @import(
-    "tui",
-).BuffWriter.SimpleBufferedWriter;
+// const BuffWriter = @import(
+//     "tui",
+// ).BuffWriter.SimpleBufferedWriter;
 // Random number generator
 const rand = std.crypto.random;
 
@@ -55,6 +55,7 @@ pub fn main() !void {
     var allocator = gpa.allocator();
     // Command line parameters
     const args = try std.process.argsAlloc(allocator);
+    defer std.process.argsFree(allocator, args);
     var opt_speed: ?u8 = null;
     var opt_user: ?[]const u8 = null;
     //
@@ -105,7 +106,8 @@ pub fn main() !void {
     const the_user = opt_user orelse "User";
     const the_speed: u8 = opt_speed orelse 50;
     // Buffer stdout
-    var buf_writer = BuffWriter{};
+    // var buf_writer = BuffWriter{};
+    var buf_writer = std.io.bufferedWriter(std.io.getStdOut().writer());
     // Game score
     var score: *u32 = undefined;
     // Print username, speed and score on exit
@@ -330,7 +332,8 @@ const TheApp = struct {
     food: Location = undefined,
     score: u32 = undefined,
     larva: std.ArrayList(Location) = undefined,
-    writer: *BuffWriter = undefined,
+    // writer: *BuffWriter = undefined,
+    writer: *std.io.BufferedWriter(4096, std.fs.File.Writer), //.Writer,
     panel_root: *Panel = undefined,
     app_speed: u8 = undefined,
 
@@ -340,7 +343,8 @@ const TheApp = struct {
         panel_root: *Panel,
         speed: u8,
         the_allocator: *std.mem.Allocator,
-        writer: *BuffWriter,
+        writer: anytype,
+        // writer: *BuffWriter,
     ) Self {
         var app = Self{
             .writer = writer,
